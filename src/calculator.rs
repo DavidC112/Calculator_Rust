@@ -1,5 +1,5 @@
-use std::io;
-pub fn askNumber() -> f64{
+use std::{any::Any, io};
+/*pub fn askNumber() -> f64{
     loop {
         println!("Enter a number: ");
         let mut input = String::new();
@@ -12,8 +12,8 @@ pub fn askNumber() -> f64{
         };
     }
 }
-
-pub fn askOperator() -> String{
+*/
+/*pub fn askOperator() -> String{
     loop{
         println!("Enter an opertaion (+|-|*|/): ");
         let mut input = String::new();
@@ -29,8 +29,8 @@ pub fn askOperator() -> String{
         }
     }
 }
-
-pub fn calculate() -> f64{
+*/
+/*pub fn calculate() -> f64{
     
     let number_a = askNumber();
     let number_b = askNumber();
@@ -53,4 +53,30 @@ pub fn calculate() -> f64{
             }
         };
     }
+}*/
+
+pub fn ask_for_operation() -> String{
+    loop {
+        println!("Enter an operation: ");
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).expect("Something went wrong!");
+        let operation = input.trim();
+        if operation.is_empty(){
+            continue;
+        }
+        return operation.to_ascii_lowercase();   
+    }
+}
+
+
+pub  fn calculate_operation(){
+    let input = ask_for_operation();
+    let operation: Vec<&str> = input.split_whitespace().collect();
+    for (i, value) in operation.iter().enumerate() {
+        if i % 2 == 0 {
+            println!("Number: {}", value);
+        } else {
+            println!("Operator: {}", value);
+        }
+}
 }

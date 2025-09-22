@@ -1,13 +1,10 @@
 mod calculator;
-use calculator::{calculate};
+use calculator::{ask_for_operation, calculate_operation};
 
 
 
 fn main() {
-
-    let result = calculate();
-
-    println!("The result is: {:.2}", result);
-
+    //println!("The result is {}", result);
+    calculate_operation();
 }
 
