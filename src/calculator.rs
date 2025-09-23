@@ -1,5 +1,6 @@
 
-use std::{io};
+use core::f64;
+use std::{char, io, ops::RemAssign};
 /*pub fn askNumber() -> f64{
     loop {
         println!("Enter a number: ");
@@ -72,30 +73,59 @@ pub fn ask_for_operation() -> String{
 
 pub  fn calculate_operation() -> f64{
     let input = ask_for_operation();
-    let mut result = 0.00;
-    let mut number:Vec<f64> = vec![];
-    let mut operators :Vec<String> = vec![];
+    enum Token  
+    {
+        Number(f64),
+        Operator(char),
+    }
+    let mut tokens: Vec<Token> = Vec::new();
     let operation: Vec<&str> = input.split_whitespace().collect();
-    for (i, value) in operation.iter().enumerate() {
-        if i % 2 == 0 {
-            match value.parse::<f64>() {
-                Ok(num) => number.push(num),
-                Err(_) => println!("Something went wrong!")
-            }
-        } else {
-            operators.push(value.to_string());
-        }
-    }
-    result = number[0];
-    for (i, value) in operators.iter().enumerate(){
-        if value == "+" {
-            result += number[i+1]
-        }
-        if value == "-"
-        {
-            result -= number[i+1]
-        }
-    }
-    return result;
 
+    for i in operation{
+        match i.parse::<f64>() {
+            Ok(num) => tokens.push(Token::Number((num))),
+            Err(_) =>
+            {
+                let op = i.chars().next().unwrap();
+                tokens.push(Token::Operator((op)));
+            }
+        }
+    }
+    let mut result = if let Token::Number(n) = tokens[0] {n} else{0.00};
+
+    let mut i = 1;
+    while i < tokens.len() {
+        match tokens[i] {
+            Token::Operator('*') => {
+            if let (Token::Number(left), Token::Number(right)) = (&tokens[i-1], &tokens[i+1]) {
+                let temp = left * right;
+                tokens.splice(i-1..=i+1, [Token::Number(temp)]);
+                i += 1;
+            }
+        },
+        Token::Operator('/') => {
+            if let (Token::Number(left), Token::Number(right)) = (&tokens[i-1], &tokens[i+1]){
+                let temp = left / right;
+                tokens.splice(i-1..=i+1,[Token::Number(temp)]);
+                i += 1;
+            }
+        },
+        _ => i += 1,
+    }
+}
+
+    let mut x = 1;
+    while x < tokens.len(){
+        if let Token::Operator(op) = tokens[x]{
+            if let Token::Number(n) = tokens[x+1]{
+                match op {
+                    '+' => result += n,
+                    '-' => result -= n,
+                    _ =>unreachable!()
+                }
+            }
+        }
+        x += 2;
+    }
+    return  result;
 }
