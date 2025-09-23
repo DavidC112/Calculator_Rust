@@ -1,4 +1,5 @@
-use std::{any::Any, io};
+
+use std::{io};
 /*pub fn askNumber() -> f64{
     loop {
         println!("Enter a number: ");
@@ -69,14 +70,32 @@ pub fn ask_for_operation() -> String{
 }
 
 
-pub  fn calculate_operation(){
+pub  fn calculate_operation() -> f64{
     let input = ask_for_operation();
+    let mut result = 0.00;
+    let mut number:Vec<f64> = vec![];
+    let mut operators :Vec<String> = vec![];
     let operation: Vec<&str> = input.split_whitespace().collect();
     for (i, value) in operation.iter().enumerate() {
         if i % 2 == 0 {
-            println!("Number: {}", value);
+            match value.parse::<f64>() {
+                Ok(num) => number.push(num),
+                Err(_) => println!("Something went wrong!")
+            }
         } else {
-            println!("Operator: {}", value);
+            operators.push(value.to_string());
         }
-}
+    }
+    result = number[0];
+    for (i, value) in operators.iter().enumerate(){
+        if value == "+" {
+            result += number[i+1]
+        }
+        if value == "-"
+        {
+            result -= number[i+1]
+        }
+    }
+    return result;
+
 }
