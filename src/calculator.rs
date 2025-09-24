@@ -91,9 +91,9 @@ pub  fn calculate_operation() -> f64{
             }
         }
     }
-    let mut result = if let Token::Number(n) = tokens[0] {n} else{0.00};
 
-    let mut i = 1;
+
+    let mut i = 0;
     while i < tokens.len() {
         match tokens[i] {
             Token::Operator('*') => {
@@ -114,6 +114,7 @@ pub  fn calculate_operation() -> f64{
     }
 }
 
+    let mut result = if let Token::Number(n) = tokens[0] {n} else{0.00};
     let mut x = 1;
     while x < tokens.len(){
         if let Token::Operator(op) = tokens[x]{
