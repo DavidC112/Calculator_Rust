@@ -1,61 +1,11 @@
 
 use core::f64;
-use std::{char, io, ops::RemAssign};
-/*pub fn askNumber() -> f64{
-    loop {
-        println!("Enter a number: ");
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Invalid input!");
-        match input.trim().parse::<f64>(){
-            Ok(num) => return num,
-            Err(_) => {
-                println!("Please enter a number!");
-            }
-        };
-    }
-}
-*/
-/*pub fn askOperator() -> String{
-    loop{
-        println!("Enter an opertaion (+|-|*|/): ");
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Please enter an operator!");
-        match input.trim(){
-            "+" => return "+".to_string(), 
-            "-" => return "-".to_string(),
-            "*" => return "*".to_string(),
-            "/" => return "/".to_string(),
-            _ =>{
-                println!("Invalid operator!")
-            }
-        }
-    }
-}
-*/
-/*pub fn calculate() -> f64{
-    
-    let number_a = askNumber();
-    let number_b = askNumber();
-    loop {
-        let operation = askOperator();
-            let result = match operation.as_str() {
-            "+" => return number_a + number_b,
-            "-" => return number_a - number_b,
-            "*" => return number_a * number_b,
-            "/" => {
-                if number_b == 0.00 {
-                    println!("You cannot divide by 0!");
-                    continue;
-                }
-                return number_a / number_b
-            }
-            _ => {
-                println!("Something went wrong!");
-                continue;
-            }
-        };
-    }
-}*/
+use std::fs;
+use std::{char, io};
+use std::fs::OpenOptions;
+use std::io::Write;
+
+
 
 pub fn ask_for_operation() -> String{
     loop {
@@ -63,6 +13,13 @@ pub fn ask_for_operation() -> String{
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("Something went wrong!");
         let operation = input.trim();
+        if operation == "exit"{
+            exit();
+        }
+        if operation == "history"{
+            open_history();
+            continue;
+        }
         if operation.is_empty(){
             continue;
         }
@@ -83,11 +40,11 @@ pub  fn calculate_operation() -> f64{
 
     for i in operation{
         match i.parse::<f64>() {
-            Ok(num) => tokens.push(Token::Number((num))),
+            Ok(num) => tokens.push(Token::Number(num)),
             Err(_) =>
             {
                 let op = i.chars().next().unwrap();
-                tokens.push(Token::Operator((op)));
+                tokens.push(Token::Operator(op));
             }
         }
     }
@@ -128,5 +85,39 @@ pub  fn calculate_operation() -> f64{
         }
         x += 2;
     }
-    return  result;
+    if result.is_infinite() || result.is_nan(){
+        println!("Something went wrong!");
+        return 0.00;
+    }
+    else {
+        let data = format!("{} = {}\n", input, result).trim().to_string();
+        write_history(data);
+        return result;
+    }
+}
+
+
+pub fn starter(){
+    println!("Welcome to the Rust Calculator!");
+    println!("You can enter operations like '3 + 5 * 2 - 4 / 2'");
+    println!("Type 'history' to see previous calculations.");
+    println!("Type 'exit' to quit the calculator.");
+}
+
+pub fn exit(){
+    std::process::exit(0)
+}
+
+pub fn write_history(data: String){
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("history.txt")
+        .expect("Unable to open file");
+    writeln!(file, "{}",data).expect("Unable to write data");
+}
+
+pub fn open_history(){
+    let history = fs::read_to_string("history.txt").expect("Something went wrong!");
+    println!("History:\n{}", history.trim_end());
 }
