@@ -108,13 +108,24 @@ pub fn exit(){
     std::process::exit(0)
 }
 
-pub fn write_history(data: String){
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open("history.txt")
-        .expect("Unable to open file");
-    writeln!(file, "{}",data).expect("Unable to write data");
+
+pub fn write_history(data: String) {
+    {
+        let mut file = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open("history.txt")
+            .expect("Something went wrong!");
+
+        writeln!(file, "{}", data).expect("Something went wrong!");
+    }
+    let content = fs::read_to_string("history.txt").expect("Something went wrong!");
+    let mut lines: Vec<&str> = content.lines().collect();
+
+    if lines.len() > 10 {
+        lines = lines[lines.len()-10..].to_vec();
+        fs::write("history.txt", lines.join("\n") + "\n").expect("Something went wrong!");
+    }
 }
 
 pub fn open_history(){
