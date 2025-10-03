@@ -3,9 +3,12 @@ use calculator::{calculate_operation, starter};
 
 fn main() {
     starter();
-    while true{
+    loop{
         let res = calculate_operation();
-        println!("Result: {}", res); 
+        match res {
+            Ok(n) => println!("Result: {}", n),
+            Err(msg) => println!("{}",msg)
+        }
     }
 }
 

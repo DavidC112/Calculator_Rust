@@ -28,7 +28,11 @@ pub fn ask_for_operation() -> String{
 }
 
 
-pub  fn calculate_operation() -> f64{
+
+pub  fn calculate_operation() -> Result<f64, &'static str>{
+
+    
+
     let input = ask_for_operation();
     enum Token  
     {
@@ -47,6 +51,9 @@ pub  fn calculate_operation() -> f64{
                 tokens.push(Token::Operator(op));
             }
         }
+    }
+    if tokens.is_empty(){
+        return Err("Error");
     }
 
 
@@ -71,7 +78,10 @@ pub  fn calculate_operation() -> f64{
     }
 }
 
-    let mut result = if let Token::Number(n) = tokens[0] {n} else{0.00};
+    let mut result = match tokens.get(0) {
+    Some(Token::Number(n)) => *n,
+    _ => return Err("Error"),
+};
     let mut x = 1;
     while x < tokens.len(){
         if let Token::Operator(op) = tokens[x]{
@@ -79,21 +89,20 @@ pub  fn calculate_operation() -> f64{
                 match op {
                     '+' => result += n,
                     '-' => result -= n,
-                    _ =>unreachable!()
+                    _ => return Err("Error"),
                 }
+            }
+            else {
+                return Err("Error");
             }
         }
         x += 2;
     }
-    if result.is_infinite() || result.is_nan(){
-        println!("Something went wrong!");
-        return 0.00;
-    }
-    else {
-        let data = format!("{} = {}\n", input, result).trim().to_string();
-        write_history(data);
-        return result;
-    }
+
+
+    let data = format!("{} = {}\n", input, result).trim().to_string();
+    write_history(data);
+    return Ok(result);
 }
 
 
