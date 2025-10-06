@@ -37,16 +37,17 @@ pub fn ask_for_operation() -> String{
 }
 
 
-
 pub fn calculate_operation() -> Result<f64, &'static str>{
-
-    
 
     let input = ask_for_operation();
     let mut tokens: Vec<Token> = Vec::new();
     let operation: Vec<&str> = input.split_whitespace().collect();
 
     for i in operation{
+        if i == "sqrt" {
+            tokens.push(Token::Operator('s'));
+            continue;
+        }
         match i.parse::<f64>() {
             Ok(num) => tokens.push(Token::Number(num)),
             Err(_) =>
@@ -59,12 +60,17 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
             }
         }
     }
+
     if tokens.is_empty(){
         return Err("Error");
     }
 
+    power_root(&mut tokens);
+
     multiplication_divison(&mut tokens);
+
     let result: f64;
+
     match addition_subtraction(&mut tokens){
         Ok(res) => result = res,
         Err(e) => return Err(e),
@@ -148,9 +154,9 @@ fn addition_subtraction(tokens: &mut Vec<Token>) -> Result<f64, &'static str>{
         Some(Token::Number(n)) => *n,
         _ => return Err("Error"),
     };
-    let mut x = 1;
-    while x < tokens.len() {
-            if let (Token::Operator(op), Some(Token::Number(n))) = (&tokens[x], tokens.get(x + 1)) {
+    let mut i = 1;
+    while i < tokens.len() {
+            if let(Token::Operator(op), Some(Token::Number(n))) = (&tokens[i], tokens.get(i + 1)){
                 match op {
                     '+' => result += *n,
                     '-' => result -= *n,
@@ -160,7 +166,42 @@ fn addition_subtraction(tokens: &mut Vec<Token>) -> Result<f64, &'static str>{
             else{
                 return Err("Error");
             }
-        x += 2;
+        i += 2;
     }
     return Ok(result)
+}
+
+fn power_root(tokens:&mut Vec<Token>){
+    let mut i = 0;
+    while i < tokens.len(){
+        match tokens[i]{
+            Token::Operator('s') =>{
+                if i  == 0 {
+                     if let Token::Number(right) = &tokens[i + 1] {
+                        let temp = right.sqrt();
+                        tokens.splice(i..=i + 1, [Token::Number(temp)]);
+                        i += 1;
+                    }
+                }
+                else if let (Token::Number(left), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
+                    let temp = left.powf(1.00/ *right);
+                    tokens.splice(i-1..=i + 1, [Token::Number(temp)]);
+                    i += 1;
+                }
+                else if let(Token::Operator(left ), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
+                    let temp = right.sqrt();
+                    tokens.splice(i..=i + 1, [Token::Number(temp)]);
+                    i += 1;
+                }
+            }
+            Token::Operator('^') =>{
+                if let (Token::Number(left), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
+                    let temp = left.powf(*right);
+                    tokens.splice(i-1..=i + 1, [Token::Number(temp)]);
+                    i += 1;
+                }
+            }
+            _ => i += 1
+        }
+    }
 }

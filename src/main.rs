@@ -1,6 +1,5 @@
 mod calculator;
 use calculator::{calculate_operation, starter};
-
 fn main() {
     starter();
     loop{
@@ -10,4 +9,3 @@ fn main() {
         }
     }
 }
-
