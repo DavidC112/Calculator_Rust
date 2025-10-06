@@ -6,6 +6,10 @@ use std::fs::OpenOptions;
 use std::io::Write;
 
 
+enum Token  {
+    Number(f64),
+    Operator(char),
+}
 
 pub fn ask_for_operation() -> String{
     loop {
@@ -20,6 +24,11 @@ pub fn ask_for_operation() -> String{
             open_history();
             continue;
         }
+        if operation == "clear history"{
+            clear_history();
+            println!("History cleared.");
+            continue;
+        }
         if operation.is_empty(){
             continue;
         }
@@ -29,16 +38,11 @@ pub fn ask_for_operation() -> String{
 
 
 
-pub  fn calculate_operation() -> Result<f64, &'static str>{
+pub fn calculate_operation() -> Result<f64, &'static str>{
 
     
 
     let input = ask_for_operation();
-    enum Token  
-    {
-        Number(f64),
-        Operator(char),
-    }
     let mut tokens: Vec<Token> = Vec::new();
     let operation: Vec<&str> = input.split_whitespace().collect();
 
@@ -47,8 +51,11 @@ pub  fn calculate_operation() -> Result<f64, &'static str>{
             Ok(num) => tokens.push(Token::Number(num)),
             Err(_) =>
             {
-                let op = i.chars().next().unwrap();
-                tokens.push(Token::Operator(op));
+                let op = i.chars().next();
+                match op {
+                    Some(c)=> tokens.push(Token::Operator(c)),
+                    _ => return Err("Error"),
+                }
             }
         }
     }
@@ -56,53 +63,21 @@ pub  fn calculate_operation() -> Result<f64, &'static str>{
         return Err("Error");
     }
 
-
-    let mut i = 0;
-    while i < tokens.len() {
-        match tokens[i] {
-            Token::Operator('*') => {
-            if let (Token::Number(left), Token::Number(right)) = (&tokens[i-1], &tokens[i+1]) {
-                let temp = left * right;
-                tokens.splice(i-1..=i+1, [Token::Number(temp)]);
-                i += 1;
-            }
-        },
-        Token::Operator('/') => {
-            if let (Token::Number(left), Token::Number(right)) = (&tokens[i-1], &tokens[i+1]){
-                let temp = left / right;
-                tokens.splice(i-1..=i+1,[Token::Number(temp)]);
-                i += 1;
-            }
-        },
-        _ => i += 1,
-    }
-}
-
-    let mut result = match tokens.get(0) {
-    Some(Token::Number(n)) => *n,
-    _ => return Err("Error"),
-};
-    let mut x = 1;
-    while x < tokens.len(){
-        if let Token::Operator(op) = tokens[x]{
-            if let Token::Number(n) = tokens[x+1]{
-                match op {
-                    '+' => result += n,
-                    '-' => result -= n,
-                    _ => return Err("Error"),
-                }
-            }
-            else {
-                return Err("Error");
-            }
-        }
-        x += 2;
+    multiplication_divison(&mut tokens);
+    let result: f64;
+    match addition_subtraction(&mut tokens){
+        Ok(res) => result = res,
+        Err(e) => return Err(e),
     }
 
-
-    let data = format!("{} = {}\n", input, result).trim().to_string();
-    write_history(data);
-    return Ok(result);
+    if result.is_infinite() | result.is_nan(){
+        return Err("Error");
+    }
+    else{
+        let data = format!("{} = {}\n", input, result).trim().to_string();
+        write_history(data);
+        return Ok(result);
+    }
 }
 
 
@@ -113,12 +88,11 @@ pub fn starter(){
     println!("Type 'exit' to quit the calculator.");
 }
 
-pub fn exit(){
+fn exit(){
     std::process::exit(0)
 }
 
-
-pub fn write_history(data: String) {
+fn write_history(data: String) {
     {
         let mut file = OpenOptions::new()
             .append(true)
@@ -137,7 +111,56 @@ pub fn write_history(data: String) {
     }
 }
 
-pub fn open_history(){
+fn open_history(){
     let history = fs::read_to_string("history.txt").expect("Something went wrong!");
     println!("History:\n{}", history.trim_end());
+}
+
+fn clear_history(){
+    fs::write("history.txt", "").expect("Something went wrong!");
+}
+
+fn multiplication_divison(tokens: &mut Vec<Token>){
+    let mut i = 0;
+    while i < tokens.len() {
+        match tokens[i] {
+            Token::Operator('*') => {
+                if let (Token::Number(left), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
+                    let temp = left * right;
+                    tokens.splice(i - 1..=i + 1, [Token::Number(temp)]);
+                    i += 1;
+                }
+            }
+            Token::Operator('/') => {
+                if let (Token::Number(left), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
+                    let temp = left / right;
+                    tokens.splice(i - 1..=i + 1, [Token::Number(temp)]);
+                    i += 1;
+                }
+            }
+            _ => i += 1,
+        }
+    }
+}
+
+fn addition_subtraction(tokens: &mut Vec<Token>) -> Result<f64, &'static str>{
+    let mut result = match tokens.get(0) {
+        Some(Token::Number(n)) => *n,
+        _ => return Err("Error"),
+    };
+    let mut x = 1;
+    while x < tokens.len() {
+            if let (Token::Operator(op), Some(Token::Number(n))) = (&tokens[x], tokens.get(x + 1)) {
+                match op {
+                    '+' => result += *n,
+                    '-' => result -= *n,
+                    _ => return Err("Error"),
+                }
+            }
+            else{
+                return Err("Error");
+            }
+        x += 2;
+    }
+    return Ok(result)
 }
