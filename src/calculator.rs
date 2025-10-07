@@ -1,15 +1,24 @@
 
 use core::f64;
-use std::fs;
+use std::fs::{self};
 use std::{char, io};
 use std::fs::OpenOptions;
 use std::io::Write;
+use serde::{Deserialize, Serialize};
 
 
 enum Token  {
     Number(f64),
     Operator(char),
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    history_length: usize,
+    pub decimal_precision: usize
+}
+
+
 
 pub fn ask_for_operation() -> String{
     loop {
@@ -38,7 +47,7 @@ pub fn ask_for_operation() -> String{
 
 
 pub fn calculate_operation() -> Result<f64, &'static str>{
-
+    let config : Config = read_config();
     let input = ask_for_operation();
     let mut tokens: Vec<Token> = Vec::new();
     let operation: Vec<&str> = input.split_whitespace().collect();
@@ -80,8 +89,8 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
         return Err("Error");
     }
     else{
-        let data = format!("{} = {}\n", input, result).trim().to_string();
-        write_history(data);
+        let data = format!("{} = {:.prec$}\n", input, result, prec = config.decimal_precision as usize).trim().to_string();
+        write_history(data, config.history_length);
         return Ok(result);
     }
 }
@@ -98,7 +107,7 @@ fn exit(){
     std::process::exit(0)
 }
 
-fn write_history(data: String) {
+fn write_history(data: String, lenght: usize) {
     {
         let mut file = OpenOptions::new()
             .append(true)
@@ -111,8 +120,8 @@ fn write_history(data: String) {
     let content = fs::read_to_string("history.txt").expect("Something went wrong!");
     let mut lines: Vec<&str> = content.lines().collect();
 
-    if lines.len() > 10 {
-        lines = lines[lines.len()-10..].to_vec();
+    if lines.len() > lenght {
+        lines = lines[lines.len()-lenght..].to_vec();
         fs::write("history.txt", lines.join("\n") + "\n").expect("Something went wrong!");
     }
 }
@@ -188,7 +197,7 @@ fn power_root(tokens:&mut Vec<Token>){
                     tokens.splice(i-1..=i + 1, [Token::Number(temp)]);
                     i += 1;
                 }
-                else if let(Token::Operator(left ), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
+                else if let(Token::Operator(_left ), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
                     let temp = right.sqrt();
                     tokens.splice(i..=i + 1, [Token::Number(temp)]);
                     i += 1;
@@ -204,4 +213,14 @@ fn power_root(tokens:&mut Vec<Token>){
             _ => i += 1
         }
     }
+}
+
+pub fn read_config() -> Config {
+    let json = fs::read_to_string("config.json").expect("Cannot read file");
+    let config: Config = serde_json::from_str(&json).expect("Invalid JSON format"); 
+    return config
+}
+
+pub fn format_output(m: &str, n: f64, precision: usize) -> String {
+    format!("{} = {:.prec$}", m, n, prec = precision)
 }
