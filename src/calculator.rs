@@ -1,4 +1,3 @@
-
 use core::f64;
 use std::fs::{self};
 use std::{char, io};
@@ -24,7 +23,7 @@ pub fn ask_for_operation() -> String{
     loop {
         println!("Enter an operation: ");
         let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Something went wrong!");
+        io::stdin().read_line(&mut input).expect("error case 1");
         let operation = input.trim();
         if operation == "exit"{
             exit();
@@ -64,14 +63,14 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
                 let op = i.chars().next();
                 match op {
                     Some(c)=> tokens.push(Token::Operator(c)),
-                    _ => return Err("Error"),
+                    _ => return Err("error case 2"),
                 }
             }
         }
     }
 
     if tokens.is_empty(){
-        return Err("Error");
+        return Err("error case 3");
     }
 
     power_root(&mut tokens);
@@ -86,7 +85,7 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
     }
 
     if result.is_infinite() | result.is_nan(){
-        return Err("Error");
+        return Err("error case 4");
     }
     else{
         let data = format!("{} = {:.prec$}\n", input, result, prec = config.decimal_precision as usize).trim().to_string();
@@ -113,26 +112,26 @@ fn write_history(data: String, lenght: usize) {
             .append(true)
             .create(true)
             .open("history.txt")
-            .expect("Something went wrong!");
+            .expect("error case 5");
 
-        writeln!(file, "{}", data).expect("Something went wrong!");
+        writeln!(file, "{}", data).expect("error case 6");
     }
-    let content = fs::read_to_string("history.txt").expect("Something went wrong!");
+    let content = fs::read_to_string("history.txt").expect("error case 7");
     let mut lines: Vec<&str> = content.lines().collect();
 
     if lines.len() > lenght {
         lines = lines[lines.len()-lenght..].to_vec();
-        fs::write("history.txt", lines.join("\n") + "\n").expect("Something went wrong!");
+        fs::write("history.txt", lines.join("\n") + "\n").expect("error case 8");
     }
 }
 
 fn open_history(){
-    let history = fs::read_to_string("history.txt").expect("Something went wrong!");
+    let history = fs::read_to_string("history.txt").expect("error case 9");
     println!("History:\n{}", history.trim_end());
 }
 
 fn clear_history(){
-    fs::write("history.txt", "").expect("Something went wrong!");
+    fs::write("history.txt", "").expect("error case 10");
 }
 
 fn multiplication_divison(tokens: &mut Vec<Token>){
@@ -143,14 +142,14 @@ fn multiplication_divison(tokens: &mut Vec<Token>){
                 if let (Token::Number(left), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
                     let temp = left * right;
                     tokens.splice(i - 1..=i + 1, [Token::Number(temp)]);
-                    i += 1;
+                    i = i.saturating_sub(1)
                 }
             }
             Token::Operator('/') => {
                 if let (Token::Number(left), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
                     let temp = left / right;
                     tokens.splice(i - 1..=i + 1, [Token::Number(temp)]);
-                    i += 1;
+                    i = i.saturating_sub(1)
                 }
             }
             _ => i += 1,
@@ -161,7 +160,7 @@ fn multiplication_divison(tokens: &mut Vec<Token>){
 fn addition_subtraction(tokens: &mut Vec<Token>) -> Result<f64, &'static str>{
     let mut result = match tokens.get(0) {
         Some(Token::Number(n)) => *n,
-        _ => return Err("Error"),
+        _ => return Err("error case 11"),
     };
     let mut i = 1;
     while i < tokens.len() {
@@ -169,11 +168,11 @@ fn addition_subtraction(tokens: &mut Vec<Token>) -> Result<f64, &'static str>{
                 match op {
                     '+' => result += *n,
                     '-' => result -= *n,
-                    _ => return Err("Error"),
+                    _ => return Err("error case 12"),
                 }
             }
             else{
-                return Err("Error");
+                return Err("error case 13");
             }
         i += 2;
     }
@@ -189,25 +188,25 @@ fn power_root(tokens:&mut Vec<Token>){
                      if let Token::Number(right) = &tokens[i + 1] {
                         let temp = right.sqrt();
                         tokens.splice(i..=i + 1, [Token::Number(temp)]);
-                        i += 1;
+                        i = i.saturating_sub(1);
                     }
                 }
                 else if let (Token::Number(left), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
                     let temp = left.powf(1.00/ *right);
                     tokens.splice(i-1..=i + 1, [Token::Number(temp)]);
-                    i += 1;
+                    i = i.saturating_sub(1);
                 }
                 else if let(Token::Operator(_left ), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
                     let temp = right.sqrt();
                     tokens.splice(i..=i + 1, [Token::Number(temp)]);
-                    i += 1;
+                    i = i.saturating_sub(1);
                 }
             }
             Token::Operator('^') =>{
                 if let (Token::Number(left), Token::Number(right)) = (&tokens[i - 1], &tokens[i + 1]) {
                     let temp = left.powf(*right);
                     tokens.splice(i-1..=i + 1, [Token::Number(temp)]);
-                    i += 1;
+                    i = i.saturating_sub(1);
                 }
             }
             _ => i += 1
@@ -216,8 +215,8 @@ fn power_root(tokens:&mut Vec<Token>){
 }
 
 pub fn read_config() -> Config {
-    let json = fs::read_to_string("config.json").expect("Cannot read file");
-    let config: Config = serde_json::from_str(&json).expect("Invalid JSON format"); 
+    let json = fs::read_to_string("config.json").expect("error case 14");
+    let config: Config = serde_json::from_str(&json).expect("error case 15"); 
     return config
 }
 
