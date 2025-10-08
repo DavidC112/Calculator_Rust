@@ -1,8 +1,7 @@
 use core::f64;
+use std::f32::DIGITS;
 use std::fs::{self};
 use std::{char, io};
-use std::fs::OpenOptions;
-use std::io::Write;
 use serde::{Deserialize, Serialize};
 
 
@@ -10,6 +9,7 @@ enum Token  {
     Number(f64),
     Operator(char),
 }
+
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
@@ -29,7 +29,7 @@ pub fn ask_for_operation() -> String{
             exit();
         }
         if operation == "history"{
-            open_history();
+            read_history();
             continue;
         }
         if operation == "clear history"{
@@ -88,7 +88,7 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
         return Err("error case 4");
     }
     else{
-        let data = format!("{} = {:.prec$}\n", input, result, prec = config.decimal_precision as usize).trim().to_string();
+        let data = format!("{} = {}\n", input, format_history(result, config.decimal_precision)).trim().to_string();
         write_history(data, config.history_length);
         return Ok(result);
     }
@@ -106,29 +106,7 @@ fn exit(){
     std::process::exit(0)
 }
 
-fn write_history(data: String, lenght: usize) {
-    {
-        let mut file = OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open("history.txt")
-            .expect("error case 5");
 
-        writeln!(file, "{}", data).expect("error case 6");
-    }
-    let content = fs::read_to_string("history.txt").expect("error case 7");
-    let mut lines: Vec<&str> = content.lines().collect();
-
-    if lines.len() > lenght {
-        lines = lines[lines.len()-lenght..].to_vec();
-        fs::write("history.txt", lines.join("\n") + "\n").expect("error case 8");
-    }
-}
-
-fn open_history(){
-    let history = fs::read_to_string("history.txt").expect("error case 9");
-    println!("History:\n{}", history.trim_end());
-}
 
 fn clear_history(){
     fs::write("history.txt", "").expect("error case 10");
@@ -221,5 +199,51 @@ pub fn read_config() -> Config {
 }
 
 pub fn format_output(m: &str, n: f64, precision: usize) -> String {
-    format!("{} = {:.prec$}", m, n, prec = precision)
+    let s = n.to_string();
+    let digits = s.split(".").nth(1).map(|part|part.len()).unwrap_or(0);
+
+    if digits > precision{
+        format!("{} = {:.prec$}", m, n, prec = precision)
+    }
+    else{
+        format!("{} = {}", m, n)
+    }
+}
+
+fn format_history(n: f64 , precision: usize) -> f64{
+    let s = n.to_string();
+    let digits = s.split(".").nth(1).map(|part| part.len()).unwrap_or(0);
+    if digits > precision{
+        let pow = 10.0_f64.powf(precision as f64);
+        let y = (n * pow).round() / pow;
+        return y;
+    }
+    else {
+        return n
+    }
+}
+
+fn read_history() -> Vec<String>{
+    let json = fs::read_to_string("history.json").expect("Error case 16");
+    let list = serde_json::from_str(&json).expect("Error code 17");
+
+    for i in &list{
+        println!("{}", i)
+    }
+    return list;
+}
+
+
+fn write_history(data: String, lenght: usize){
+    let json = fs::read_to_string("history.json").expect("Error case 16");
+    let mut list: Vec<String> = serde_json::from_str(&json).unwrap_or_else(|_| Vec::new());
+
+
+    list.push(data);
+    
+    if list.len() > lenght{
+        list = list[list.len()-lenght..].to_vec();
+    }
+
+    fs::write("history.json", serde_json::to_string_pretty(&list).unwrap()).unwrap();
 }
