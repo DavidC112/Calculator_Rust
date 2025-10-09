@@ -1,8 +1,9 @@
 use core::f64;
-use std::f32::DIGITS;
 use std::fs::{self};
 use std::{char, io};
 use serde::{Deserialize, Serialize};
+use chrono::{ DateTime, Local};
+use std::time::SystemTime;
 
 
 enum Token  {
@@ -10,13 +11,18 @@ enum Token  {
     Operator(char),
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct History{
+    expression: String,
+    result: f64,
+    time: String
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     history_length: usize,
     pub decimal_precision: usize
 }
-
 
 
 pub fn ask_for_operation() -> String{
@@ -46,6 +52,7 @@ pub fn ask_for_operation() -> String{
 
 
 pub fn calculate_operation() -> Result<f64, &'static str>{
+    let date = Local::now();
     let config : Config = read_config();
     let input = ask_for_operation();
     let mut tokens: Vec<Token> = Vec::new();
@@ -89,7 +96,7 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
     }
     else{
         let data = format!("{} = {}\n", input, format_history(result, config.decimal_precision)).trim().to_string();
-        write_history(data, config.history_length);
+        write_history(input, result,  date,config.history_length);
         return Ok(result);
     }
 }
@@ -107,9 +114,8 @@ fn exit(){
 }
 
 
-
 fn clear_history(){
-    fs::write("history.txt", "").expect("error case 10");
+    fs::write("history.json", "").expect("error case 10");
 }
 
 fn multiplication_divison(tokens: &mut Vec<Token>){
@@ -223,23 +229,23 @@ fn format_history(n: f64 , precision: usize) -> f64{
     }
 }
 
-fn read_history() -> Vec<String>{
+fn read_history() -> Vec<History>{
     let json = fs::read_to_string("history.json").expect("Error case 16");
-    let list = serde_json::from_str(&json).expect("Error code 17");
+    let list:Vec<History> = serde_json::from_str(&json).expect("Error code 17");
 
     for i in &list{
-        println!("{}", i)
+        println!("{} = {}",i.expression, i.result)
     }
     return list;
 }
 
 
-fn write_history(data: String, lenght: usize){
+fn write_history(op: String, result:f64, date: DateTime<Local>, lenght: usize){
     let json = fs::read_to_string("history.json").expect("Error case 16");
-    let mut list: Vec<String> = serde_json::from_str(&json).unwrap_or_else(|_| Vec::new());
+    let mut list: Vec<History> = serde_json::from_str(&json).unwrap_or_else(|_| Vec::new());
+    let formatted_date = date.format("%Y-%M-%D %H:%M:%S");
 
-
-    list.push(data);
+    list.push(History { expression: (op), result: (result), time: (formatted_date.to_string()) });
     
     if list.len() > lenght{
         list = list[list.len()-lenght..].to_vec();
