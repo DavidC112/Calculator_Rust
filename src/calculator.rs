@@ -95,8 +95,7 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
         return Err("error case 4");
     }
     else{
-        let data = format!("{} = {}\n", input, format_history(result, config.decimal_precision)).trim().to_string();
-        write_history(input, result,  date,config.history_length);
+        write_history(input, format_history(result, config.decimal_precision),  date,config.history_length);
         return Ok(result);
     }
 }
@@ -212,7 +211,7 @@ pub fn format_output(m: &str, n: f64, precision: usize) -> String {
         format!("{} = {:.prec$}", m, n, prec = precision)
     }
     else{
-        format!("{} = {}", m, n)
+        format!("{} = {:.0}", m, n)
     }
 }
 
@@ -252,4 +251,13 @@ fn write_history(op: String, result:f64, date: DateTime<Local>, lenght: usize){
     }
 
     fs::write("history.json", serde_json::to_string_pretty(&list).unwrap()).unwrap();
+}
+
+fn edit_digital_precision(value: usize){
+    let json = fs::read_to_string("config.json").expect("error case 17");
+    let mut list: Vec<Config> = serde_json::from_str(&json).expect("Error case 18");
+
+    for mut i in list{
+        i.decimal_precision = value;
+    }
 }
