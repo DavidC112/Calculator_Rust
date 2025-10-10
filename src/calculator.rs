@@ -1,9 +1,10 @@
 use core::f64;
 use std::fs::{self};
 use std::{char, io};
+use serde::de::value;
 use serde::{Deserialize, Serialize};
 use chrono::{ DateTime, Local};
-use std::time::SystemTime;
+use std::io::Write;
 
 
 enum Token  {
@@ -18,7 +19,7 @@ pub struct History{
     time: String
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     history_length: usize,
     pub decimal_precision: usize
@@ -27,18 +28,26 @@ pub struct Config {
 
 pub fn ask_for_operation() -> String{
     loop {
-        println!("Enter an operation: ");
+        print!("Enter an operation: ");
+        io::stdout().flush().unwrap(); 
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("error case 1");
         let operation = input.trim();
-        if operation == "exit"{
+        if operation.to_ascii_lowercase().starts_with("edit"){
+            edit_config(operation);
+            continue;
+        }
+        if operation.to_ascii_lowercase() == "commands"{
+            commands();
+        }
+        if operation.to_ascii_lowercase() == "exit"{
             exit();
         }
-        if operation == "history"{
+        if operation.to_ascii_lowercase() == "history"{
             read_history();
             continue;
         }
-        if operation == "clear history"{
+        if operation.to_ascii_lowercase() == "clear history"{
             clear_history();
             println!("History cleared.");
             continue;
@@ -104,8 +113,7 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
 pub fn starter(){
     println!("Welcome to the Rust Calculator!");
     println!("You can enter operations like '3 + 5 * 2 - 4 / 2'");
-    println!("Type 'history' to see previous calculations.");
-    println!("Type 'exit' to quit the calculator.");
+    println!("Type 'commands' to see the commands.");
 }
 
 fn exit(){
@@ -253,11 +261,49 @@ fn write_history(op: String, result:f64, date: DateTime<Local>, lenght: usize){
     fs::write("history.json", serde_json::to_string_pretty(&list).unwrap()).unwrap();
 }
 
-fn edit_digital_precision(value: usize){
+fn edit_config(operation: &str){
     let json = fs::read_to_string("config.json").expect("error case 17");
-    let mut list: Vec<Config> = serde_json::from_str(&json).expect("Error case 18");
+    let mut config: Config = serde_json::from_str(&json).unwrap_or_else(|_| Config { history_length: (10), decimal_precision: (4) });
+    let op: Vec<&str> = operation.split_whitespace().collect();
 
-    for mut i in list{
-        i.decimal_precision = value;
+    if operation.to_ascii_lowercase().starts_with("edit decimal precision"){
+            if let Some(value_str) = op.get(3) {
+                if let Ok(value) = value_str.parse::<usize>(){
+                    config.decimal_precision = value;
+                }
+                else{
+                    println!("Invalid number!");
+                }
+            } 
+            else{
+                println!("Please provide a number after the command.");
+            }
+        }
+    else if operation.to_ascii_lowercase().starts_with("edit history length") {
+        if let Some(value_str) = op.get(3){
+            if let Ok(value) = value_str.parse::<usize>(){
+                config.history_length = value;
+            }
+            else{
+                println!("Invalid number!")
+            }
+        }
+        else{
+            println!("Please provide a number after the command.")
+        }
     }
+    else{
+        println!("Invalid edit command.")
+    }
+    
+    fs::write("config.json", serde_json::to_string_pretty(&config).unwrap()).unwrap();
+}
+
+fn commands() {
+    println!("Available commands:");
+    println!("  edit history length <number>   - Set the history length (must provide a number)");
+    println!("  edit decimal precision <number> - Set decimal precision (must provide a number)");
+    println!("  history                        - Show history");
+    println!("  clear history                  - Clear history");
+    println!("  exit                           - Exit the program");
 }
