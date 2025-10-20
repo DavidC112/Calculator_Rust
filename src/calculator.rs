@@ -1,7 +1,6 @@
 use core::f64;
 use std::fs::{self};
 use std::{char, io};
-use serde::de::value;
 use serde::{Deserialize, Serialize};
 use chrono::{ DateTime, Local};
 use std::io::Write;
@@ -28,6 +27,7 @@ pub struct Config {
 
 pub fn ask_for_operation() -> String{
     loop {
+
         print!("Enter an operation: ");
         io::stdout().flush().unwrap(); 
         let mut input = String::new();
@@ -208,22 +208,26 @@ fn power_root(tokens:&mut Vec<Token>){
 pub fn read_config() -> Config {
     let json = fs::read_to_string("config.json").expect("error case 14");
     let config: Config = serde_json::from_str(&json).expect("error case 15"); 
-    return config
+    return config;
 }
 
-pub fn format_output(m: &str, n: f64, precision: usize) -> String {
+pub fn format_output(n: f64) {
+    let config: Config = read_config();
+    let precision = config.decimal_precision;
     let s = n.to_string();
     let digits = s.split(".").nth(1).map(|part|part.len()).unwrap_or(0);
 
     if digits > precision{
-        format!("{} = {:.prec$}", m, n, prec = precision)
+        println!("Result = {:.prec$}", n, prec = precision)
     }
     else{
-        format!("{} = {:.0}", m, n)
+        println!("Result = {}", n)
     }
 }
 
-fn format_history(n: f64 , precision: usize) -> f64{
+fn format_history(n: f64 ) -> f64{
+    let config: Config = read_config();
+    let precision = config.decimal_precision;
     let s = n.to_string();
     let digits = s.split(".").nth(1).map(|part| part.len()).unwrap_or(0);
     if digits > precision{
@@ -307,3 +311,59 @@ fn commands() {
     println!("  clear history                  - Clear history");
     println!("  exit                           - Exit the program");
 }
+
+
+/*fn brackets(tokens: &mut Vec<Token>){
+
+    let mut temp_tokens:Vec<Token> = Vec::new();
+    let mut i = 0;
+    let mut open_index = 0;
+    let mut close_index = 0;
+    while i < tokens.len(){
+        match tokens[i] {
+            Token::Operator('(') => {
+                open_index = i;
+                i += 1;
+            }
+            Token::Operator(')') => {
+                close_index = i;
+                i += 1;
+            } 
+            _ => i += 1
+        }
+    }
+
+    if open_index != 0 && close_index != 0{
+        let mut i = open_index + 1;
+        while i < close_index{
+            if let Token::Operator(op) = tokens[i]{
+                temp_tokens.push(Token::Operator(op));
+            }
+            if let Token::Number(num) = tokens[i]{
+                temp_tokens.push(Token::Number(num));
+            }
+        }
+    }
+
+    if temp_tokens.is_empty(){
+        println!("Error case 18")
+    }
+    else{
+        power_root(&mut tokens);
+
+        multiplication_divison(&mut tokens);
+
+        let result: f64;
+
+        match addition_subtraction(&mut tokens){
+            Ok(res) => result = res,
+            Err(e) => return Err(e),
+        }
+
+        if result.is_infinite() | result.is_nan(){
+            return Err("error case 4");
+        
+        }
+    }
+}
+    */
