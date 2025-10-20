@@ -1,7 +1,9 @@
 mod calculator;
-use calculator::{calculate_operation, starter, format_output};
+mod configuration;
+mod user_interaction;
+use calculator::{calculate_operation, format_output};
+use user_interaction:: {starter};
 
-use crate::calculator::Config;
 fn main() {
     starter();
 

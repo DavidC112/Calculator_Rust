@@ -1,9 +1,10 @@
 use core::f64;
-use std::fs::{self};
-use std::{char, io};
-use serde::{Deserialize, Serialize};
-use chrono::{ DateTime, Local};
-use std::io::Write;
+use std:: char;
+use chrono::{ Local};
+use crate:: configuration;
+use crate:: user_interaction;
+use configuration::*;
+use user_interaction::*;
 
 #[derive(Clone)]
 enum Token  {
@@ -11,53 +12,8 @@ enum Token  {
     Operator(char),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct History{
-    expression: String,
-    result: f64,
-    time: String
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Config {
-    history_length: usize,
-    pub decimal_precision: usize
-}
 
 
-pub fn ask_for_operation() -> String{
-    loop {
-
-        print!("Enter an operation: ");
-        io::stdout().flush().unwrap(); 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("error case 1");
-        let operation = input.trim();
-        if operation.to_ascii_lowercase().starts_with("edit"){
-            edit_config(operation);
-            continue;
-        }
-        if operation.to_ascii_lowercase() == "commands"{
-            commands();
-        }
-        if operation.to_ascii_lowercase() == "exit"{
-            exit();
-        }
-        if operation.to_ascii_lowercase() == "history"{
-            read_history();
-            continue;
-        }
-        if operation.to_ascii_lowercase() == "clear history"{
-            clear_history();
-            println!("History cleared.");
-            continue;
-        }
-        if operation.is_empty(){
-            continue;
-        }
-        return operation.to_ascii_lowercase();   
-    }
-}
 
 
 pub fn calculate_operation() -> Result<f64, &'static str>{
@@ -78,14 +34,14 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
                 let op = i.chars().next();
                 match op {
                     Some(c)=> tokens.push(Token::Operator(c)),
-                    _ => return Err("error case 2"),
+                    _ => return Err("Error"),
                 }
             }
         }
     }
 
     if tokens.is_empty(){
-        return Err("error case 3");
+        return Err("Enter an operation");
     }
     brackets(&mut tokens)?;
     power_root(&mut tokens);
@@ -100,7 +56,7 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
     }
 
     if result.is_infinite() | result.is_nan(){
-        return Err("error case 4");
+        return Err("Error");
     }
     else{
         write_history(input, format_history(result), date);
@@ -108,21 +64,6 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
     }
 }
 
-
-pub fn starter(){
-    println!("Welcome to the Rust Calculator!");
-    println!("You can enter operations like '3 + 5 * 2 - 4 / 2'");
-    println!("Type 'commands' to see the commands.");
-}
-
-fn exit(){
-    std::process::exit(0)
-}
-
-
-fn clear_history(){
-    fs::write("history.json", "").expect("error case 10");
-}
 
 fn multiplication_divison(tokens: &mut Vec<Token>){
     let mut i = 0;
@@ -147,10 +88,11 @@ fn multiplication_divison(tokens: &mut Vec<Token>){
     }
 }
 
+
 fn addition_subtraction(tokens: &mut Vec<Token>) -> Result<f64, &'static str>{
     let mut result = match tokens.get(0) {
         Some(Token::Number(n)) => *n,
-        _ => return Err("error case 11"),
+        _ => return Err("The operation must start with a number!"),
     };
     let mut i = 1;
     while i < tokens.len() {
@@ -158,16 +100,17 @@ fn addition_subtraction(tokens: &mut Vec<Token>) -> Result<f64, &'static str>{
                 match op {
                     '+' => result += *n,
                     '-' => result -= *n,
-                    _ => return Err("error case 12"),
+                    _ => return Err("Idk Something went wrong!"),
                 }
             }
             else{
-                return Err("error case 13");
+                return Err("This shouldn't happen idk what u did wrong!");
             }
         i += 2;
     }
     return Ok(result)
 }
+
 
 fn power_root(tokens:&mut Vec<Token>){
     let mut i = 0;
@@ -204,11 +147,6 @@ fn power_root(tokens:&mut Vec<Token>){
     }
 }
 
-pub fn read_config() -> Config {
-    let json = fs::read_to_string("config.json").expect("error case 14");
-    let config: Config = serde_json::from_str(&json).expect("error case 15"); 
-    return config;
-}
 
 pub fn format_output(n: f64) {
     let config: Config = read_config();
@@ -224,139 +162,50 @@ pub fn format_output(n: f64) {
     }
 }
 
-fn format_history(n: f64 ) -> f64{
-    let config: Config = read_config();
-    let precision = config.decimal_precision;
-    let s = n.to_string();
-    let digits = s.split(".").nth(1).map(|part| part.len()).unwrap_or(0);
-    if digits > precision{
-        let pow = 10.0_f64.powf(precision as f64);
-        let y = (n * pow).round() / pow;
-        return y;
-    }
-    else {
-        return n
-    }
-}
-
-fn read_history() -> Vec<History>{
-    let json = fs::read_to_string("history.json").expect("Error case 16");
-    let list:Vec<History> = serde_json::from_str(&json).expect("Error code 17");
-
-    for i in &list{
-        println!("{} = {}",i.expression, i.result)
-    }
-    return list;
-}
-
-
-fn write_history(op: String, result:f64, date: DateTime<Local>){
-    let config = read_config();
-    let lenght = config.history_length;
-    let json = fs::read_to_string("history.json").expect("Error case 16");
-    let mut list: Vec<History> = serde_json::from_str(&json).unwrap_or_else(|_| Vec::new());
-    let formatted_date = date.format("%Y-%M-%D %H:%M:%S");
-
-    list.push(History { expression: (op), result: (result), time: (formatted_date.to_string()) });
-    
-    if list.len() > lenght{
-        list = list[list.len()-lenght..].to_vec();
-    }
-
-    fs::write("history.json", serde_json::to_string_pretty(&list).unwrap()).unwrap();
-}
-
-fn edit_config(operation: &str){
-    let json = fs::read_to_string("config.json").expect("error case 17");
-    let mut config: Config = serde_json::from_str(&json).unwrap_or_else(|_| Config { history_length: (10), decimal_precision: (4) });
-    let op: Vec<&str> = operation.split_whitespace().collect();
-
-    if operation.to_ascii_lowercase().starts_with("edit decimal precision"){
-            if let Some(value_str) = op.get(3) {
-                if let Ok(value) = value_str.parse::<usize>(){
-                    config.decimal_precision = value;
-                }
-                else{
-                    println!("Invalid number!");
-                }
-            } 
-            else{
-                println!("Please provide a number after the command.");
-            }
-        }
-    else if operation.to_ascii_lowercase().starts_with("edit history length") {
-        if let Some(value_str) = op.get(3){
-            if let Ok(value) = value_str.parse::<usize>(){
-                config.history_length = value;
-            }
-            else{
-                println!("Invalid number!")
-            }
-        }
-        else{
-            println!("Please provide a number after the command.")
-        }
-    }
-    else{
-        println!("Invalid edit command.")
-    }
-    
-    fs::write("config.json", serde_json::to_string_pretty(&config).unwrap()).unwrap();
-}
-
-fn commands() {
-    println!("Available commands:");
-    println!("  edit history length <number>   - Set the history length (must provide a number)");
-    println!("  edit decimal precision <number> - Set decimal precision (must provide a number)");
-    println!("  history                        - Show history");
-    println!("  clear history                  - Clear history");
-    println!("  exit                           - Exit the program");
-}
-
 
 fn brackets(tokens: &mut Vec<Token>) -> Result<(), &'static str>{
 
-        let mut i = 0;
-        let mut modified = false;
+    let mut i = 0;
+    let mut modified = false;
 
-        while i < tokens.len() {
-            if let Token::Operator(')') = tokens[i]{
-                let mut j = i;
-                let mut found_open = false;
+    while i < tokens.len() {
+        if let Token::Operator(')') = tokens[i]{
+            let mut j = i;
+            let mut found_open = false;
 
-                while j > 0 {
-                    j -= 1;
-                    if let Token::Operator('(') = tokens[j]{
-                        found_open = true;
+            while j > 0 {
+                j -= 1;
+                if let Token::Operator('(') = tokens[j]{
+                    found_open = true;
 
-                        let mut inner = tokens[j + 1..i].to_vec();
+                    let mut inner = tokens[j + 1..i].to_vec();
 
-                        if inner.is_empty() {
-                            return Err("Empty parentheses");
-                        }
-
-                        power_root(&mut inner);
-                        multiplication_divison(&mut inner);
-                        let result = addition_subtraction(&mut inner)?;
-                        tokens.splice(j..=i, [Token::Number(result)]);
-                        modified = true;
-
-                        i = 0;
-                        break;
+                    if inner.is_empty() {
+                        return Err("Empty parentheses");
                     }
-                }
 
-                if !found_open{
-                    return Err("Unmatched closing parenthesis ')'");
+                    power_root(&mut inner);
+                    multiplication_divison(&mut inner);
+                    let result = addition_subtraction(&mut inner)?;
+                    tokens.splice(j..=i, [Token::Number(result)]);
+                    modified = true;
+
+                    i = 0;
+                    break;
                 }
-            } else{
-                i += 1;
             }
-        }
 
-        if modified{
-            Ok(())
+        if !found_open{
+            return Err("Unmatched closing parenthesis ')'");
+        }
         } else{
-            Ok(())
+            i += 1;
         }
     }
+
+    if modified{
+        Ok(())
+    } else{
+        Ok(())
+    }
+}
