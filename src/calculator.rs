@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use chrono::{ DateTime, Local};
 use std::io::Write;
 
-
+#[derive(Clone)]
 enum Token  {
     Number(f64),
     Operator(char),
@@ -62,7 +62,6 @@ pub fn ask_for_operation() -> String{
 
 pub fn calculate_operation() -> Result<f64, &'static str>{
     let date = Local::now();
-    let config : Config = read_config();
     let input = ask_for_operation();
     let mut tokens: Vec<Token> = Vec::new();
     let operation: Vec<&str> = input.split_whitespace().collect();
@@ -88,7 +87,7 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
     if tokens.is_empty(){
         return Err("error case 3");
     }
-
+    brackets(&mut tokens)?;
     power_root(&mut tokens);
 
     multiplication_divison(&mut tokens);
@@ -104,7 +103,7 @@ pub fn calculate_operation() -> Result<f64, &'static str>{
         return Err("error case 4");
     }
     else{
-        write_history(input, format_history(result, config.decimal_precision),  date,config.history_length);
+        write_history(input, format_history(result), date);
         return Ok(result);
     }
 }
@@ -251,7 +250,9 @@ fn read_history() -> Vec<History>{
 }
 
 
-fn write_history(op: String, result:f64, date: DateTime<Local>, lenght: usize){
+fn write_history(op: String, result:f64, date: DateTime<Local>){
+    let config = read_config();
+    let lenght = config.history_length;
     let json = fs::read_to_string("history.json").expect("Error case 16");
     let mut list: Vec<History> = serde_json::from_str(&json).unwrap_or_else(|_| Vec::new());
     let formatted_date = date.format("%Y-%M-%D %H:%M:%S");
@@ -313,57 +314,49 @@ fn commands() {
 }
 
 
-/*fn brackets(tokens: &mut Vec<Token>){
+fn brackets(tokens: &mut Vec<Token>) -> Result<(), &'static str>{
 
-    let mut temp_tokens:Vec<Token> = Vec::new();
-    let mut i = 0;
-    let mut open_index = 0;
-    let mut close_index = 0;
-    while i < tokens.len(){
-        match tokens[i] {
-            Token::Operator('(') => {
-                open_index = i;
+        let mut i = 0;
+        let mut modified = false;
+
+        while i < tokens.len() {
+            if let Token::Operator(')') = tokens[i]{
+                let mut j = i;
+                let mut found_open = false;
+
+                while j > 0 {
+                    j -= 1;
+                    if let Token::Operator('(') = tokens[j]{
+                        found_open = true;
+
+                        let mut inner = tokens[j + 1..i].to_vec();
+
+                        if inner.is_empty() {
+                            return Err("Empty parentheses");
+                        }
+
+                        power_root(&mut inner);
+                        multiplication_divison(&mut inner);
+                        let result = addition_subtraction(&mut inner)?;
+                        tokens.splice(j..=i, [Token::Number(result)]);
+                        modified = true;
+
+                        i = 0;
+                        break;
+                    }
+                }
+
+                if !found_open{
+                    return Err("Unmatched closing parenthesis ')'");
+                }
+            } else{
                 i += 1;
             }
-            Token::Operator(')') => {
-                close_index = i;
-                i += 1;
-            } 
-            _ => i += 1
-        }
-    }
-
-    if open_index != 0 && close_index != 0{
-        let mut i = open_index + 1;
-        while i < close_index{
-            if let Token::Operator(op) = tokens[i]{
-                temp_tokens.push(Token::Operator(op));
-            }
-            if let Token::Number(num) = tokens[i]{
-                temp_tokens.push(Token::Number(num));
-            }
-        }
-    }
-
-    if temp_tokens.is_empty(){
-        println!("Error case 18")
-    }
-    else{
-        power_root(&mut tokens);
-
-        multiplication_divison(&mut tokens);
-
-        let result: f64;
-
-        match addition_subtraction(&mut tokens){
-            Ok(res) => result = res,
-            Err(e) => return Err(e),
         }
 
-        if result.is_infinite() | result.is_nan(){
-            return Err("error case 4");
-        
+        if modified{
+            Ok(())
+        } else{
+            Ok(())
         }
     }
-}
-    */
